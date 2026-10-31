@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convertisseur d’unités</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+<style>
+  :root { --fond: #0a0f0b; --panneau: #0f1712; --ligne: #1f3a28; --vert: #4ade80; --vert-doux: #86efac; --texte: #d1fae5; --gris: #8aa595; --erreur: #fca5a5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--fond); color: var(--texte); font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace; font-size: 15px; line-height: 1.5;
+    background-image: linear-gradient(rgba(74, 222, 128, .03) 1px, transparent 1px); background-size: 100% 3px; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--vert); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .conteneur { max-width: 760px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .invite { color: var(--gris); margin: 0; font-size: .85rem; }
+  .invite b { color: var(--vert); font-weight: 400; }
+  h1 { margin: .25rem 0 1.25rem; font-size: clamp(1.3rem, 5.5vw, 1.75rem); color: var(--vert); font-weight: 700; }
+  h1::after { content: "_"; content: "_" / ""; animation: clignote 1s steps(1) infinite; }
+  @keyframes clignote { 50% { opacity: 0; } }
+  h2 { font-size: 1rem; color: var(--vert-doux); margin: 0 0 .75rem; font-weight: 700; }
+  h2::before { content: "## "; content: "## " / ""; color: var(--gris); }
+  .categories { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+  .categorie { background: transparent; border: 1px solid var(--ligne); color: var(--gris); padding: .4rem .7rem; border-radius: 4px; cursor: pointer; }
+  .categorie:hover { color: var(--texte); border-color: var(--vert); }
+  .categorie[aria-pressed="true"] { background: var(--vert); color: #04150a; border-color: var(--vert); font-weight: 700; }
+  .panneau { background: var(--panneau); border: 1px solid var(--ligne); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+  .conversion { display: grid; grid-template-columns: 1fr; gap: .75rem; align-items: end; }
+  @media (min-width: 620px) { .conversion { grid-template-columns: 1fr auto 1fr; } }
+  .cote { display: flex; flex-direction: column; gap: .35rem; }
+  .cote label { color: var(--gris); font-size: .8rem; }
+  .cote label::before { content: "> "; content: "> " / ""; color: var(--vert); }
+  .champ-valeur { background: #050806; border: 1px solid var(--ligne); color: var(--vert); padding: .65rem .75rem; border-radius: 4px; font-size: 1.35rem; width: 100%; }
+  .champ-valeur[aria-invalid="true"] { border-color: var(--erreur); color: var(--erreur); }
+  select { background: #050806; border: 1px solid var(--ligne); padding: .5rem; border-radius: 4px; width: 100%; color: var(--texte); }
+  #btn-inverser { background: transparent; border: 1px solid var(--vert); color: var(--vert); border-radius: 4px; padding: .55rem .9rem; cursor: pointer; font-size: 1.1rem; justify-self: center; }
+  #btn-inverser:hover { background: var(--vert); color: #04150a; }
+  .resume { margin: 1rem 0 0; color: var(--vert-doux); overflow-wrap: anywhere; min-height: 1.5em; }
+  .erreur { color: var(--erreur); margin: .5rem 0 0; min-height: 1.5em; }
+  .options { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center; }
+  .options label { color: var(--texte); }
+  input[type=range] { accent-color: var(--vert); width: 11rem; vertical-align: middle; }
+  input[type=checkbox], input[type=radio] { accent-color: var(--vert); }
+  output { color: var(--vert); font-weight: 700; }
+  fieldset { border: 1px dashed var(--ligne); border-radius: 4px; padding: .5rem .8rem; margin: 0; }
+  legend { color: var(--gris); padding: 0 .3rem; font-size: .85rem; }
+  fieldset label { display: block; margin: .15rem 0; }
+  .tableau { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--ligne); }
+  th { color: var(--gris); font-weight: 400; }
+  td.valeur { color: var(--vert); text-align: right; white-space: nowrap; }
+  tr.actif td { background: rgba(74, 222, 128, .08); }
+  .pied { color: var(--gris); font-size: .8rem; margin-top: 2rem; }
+  @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
+</style>
+</head>
+<body>
+<div class="conteneur">
+  <header>
+    <p class="invite" aria-hidden="true"><b>theo@labo</b>:~$ ./convertir --temps-reel</p>
+    <h1>Convertisseur d’unités</h1>
+  </header>
+  <main>
+    <nav class="categories" id="categories" aria-label="Catégories"></nav>
+
+    <section class="panneau" aria-labelledby="titre-conversion">
+      <h2 id="titre-conversion">conversion</h2>
+      <div class="conversion">
+        <div class="cote">
+          <label for="valeur-a">valeur 1</label>
+          <input type="text" id="valeur-a" class="champ-valeur" inputmode="decimal" autocomplete="off" spellcheck="false">
+          <label for="unite-a">unité 1</label>
+          <select id="unite-a"></select>
+        </div>
+        <button type="button" id="btn-inverser" aria-label="Inverser les unités" title="Inverser les unités">⇄</button>
+        <div class="cote">
+          <label for="valeur-b">valeur 2</label>
+          <input type="text" id="valeur-b" class="champ-valeur" inputmode="decimal" autocomplete="off" spellcheck="false">
+          <label for="unite-b">unité 2</label>
+          <select id="unite-b"></select>
+        </div>
+      </div>
+      <p id="resume" class="resume" aria-live="polite"></p>
+      <p id="erreur" class="erreur" role="alert"></p>
+    </section>
+
+    <section class="panneau" aria-labelledby="titre-options">
+      <h2 id="titre-options">options</h2>
+      <div class="options">
+        <label for="decimales">décimales : <output id="decimales-valeur" for="decimales">4</output></label>
+        <input type="range" id="decimales" min="0" max="10" value="4">
+        <label><input type="checkbox" id="option-zeros" checked> masquer les zéros inutiles</label>
+        <fieldset id="choix-base" hidden>
+          <legend>base des données</legend>
+          <label><input type="radio" name="base" id="base-1000" value="1000" checked> 1000 (SI : 1 Ko = 1 000 o)</label>
+          <label><input type="radio" name="base" id="base-1024" value="1024"> 1024 (binaire : 1 Kio = 1 024 o)</label>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="panneau" aria-labelledby="titre-equivalences">
+      <h2 id="titre-equivalences">équivalences</h2>
+      <div class="tableau">
+        <table id="table-equivalences">
+          <thead><tr><th scope="col">unité</th><th scope="col">valeur</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <p class="pied">// par Théo Garnier · calcul 100 % local, aucune donnée ne quitte ton appareil</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const CLE = 'convertisseur:v1';
+  // Chaque unité : [libellé, symbole, facteur vers l'unité de base de la catégorie]
+  const CATEGORIES = {
+    longueur: { nom: 'Longueur', defaut: ['km', 'mi'], unites: {
+      mm: ['millimètre', 'mm', 0.001], cm: ['centimètre', 'cm', 0.01], m: ['mètre', 'm', 1], km: ['kilomètre', 'km', 1000],
+      in: ['pouce', 'in', 0.0254], ft: ['pied', 'ft', 0.3048], yd: ['yard', 'yd', 0.9144], mi: ['mile', 'mi', 1609.344], nmi: ['mille marin', 'nmi', 1852] } },
+    masse: { nom: 'Masse', defaut: ['kg', 'lb'], unites: {
+      mg: ['milligramme', 'mg', 1e-6], g: ['gramme', 'g', 0.001], kg: ['kilogramme', 'kg', 1], t: ['tonne', 't', 1000],
+      oz: ['once', 'oz', 0.028349523125], lb: ['livre (US)', 'lb', 0.45359237], st: ['stone', 'st', 6.35029318] } },
+    temperature: { nom: 'Température', defaut: ['c', 'f'], unites: {
+      c: ['degré Celsius', '°C'], f: ['degré Fahrenheit', '°F'], k: ['kelvin', 'K'] } },
+    volume: { nom: 'Volume', defaut: ['l', 'galus'], unites: {
+      ml: ['millilitre', 'mL', 0.001], cl: ['centilitre', 'cL', 0.01], l: ['litre', 'L', 1], m3: ['mètre cube', 'm³', 1000],
+      cc: ['cuillère à café', 'c. à c.', 0.005], cs: ['cuillère à soupe', 'c. à s.', 0.015], tasse: ['tasse (US)', 'cup', 0.2365882365],
+      floz: ['once liquide (US)', 'fl oz', 0.0295735295625], pinte: ['pinte (UK)', 'pt', 0.56826125], galus: ['gallon (US)', 'gal', 3.785411784] } },
+    vitesse: { nom: 'Vitesse', defaut: ['kmh', 'mph'], unites: {
+      ms: ['mètre par seconde', 'm/s', 1], kmh: ['kilomètre par heure', 'km/h', 1 / 3.6], mph: ['mile par heure', 'mph', 0.44704],
+      kn: ['nœud', 'kn', 1852 / 3600], fts: ['pied par seconde', 'ft/s', 0.3048], mach: ['Mach (≈ 343 m/s)', 'Ma', 343] } },
+    donnees: { nom: 'Données', defaut: ['go', 'mo'], unites: null }
+  };
+  // Température : tout passe par le degré Celsius
+  const VERS_C = { c: (v) => v, f: (v) => (v - 32) * 5 / 9, k: (v) => v - 273.15 };
+  const DEPUIS_C = { c: (v) => v, f: (v) => v * 9 / 5 + 32, k: (v) => v + 273.15 };
+
+  const $ = (sel) => document.querySelector(sel);
+  const el = {
+    nav: $('#categories'), a: $('#valeur-a'), b: $('#valeur-b'), uA: $('#unite-a'), uB: $('#unite-b'),
+    resume: $('#resume'), erreur: $('#erreur'), dec: $('#decimales'), decVal: $('#decimales-valeur'),
+    zeros: $('#option-zeros'), base: $('#choix-base'), table: $('#table-equivalences tbody')
+  };
+
+  // --- Préférences (stockage local protégé) ---
+  let prefs = { cat: 'longueur', unites: {}, decimales: 4, zeros: true, base: 1000, valeur: '1' };
+  try {
+    const d = JSON.parse(localStorage.getItem(CLE));
+    if (d && CATEGORIES[d.cat]) prefs = Object.assign(prefs, d);
+  } catch (e) { /* stockage indisponible */ }
+  if (!prefs.unites || typeof prefs.unites !== 'object') prefs.unites = {};
+  prefs.decimales = Math.min(10, Math.max(0, Math.round(Number(prefs.decimales)) || 0));
+  function sauvegarder() { try { localStorage.setItem(CLE, JSON.stringify(prefs)); } catch (e) { /* ignoré */ } }
+
+  function unitesDe(cat) {
+    if (cat !== 'donnees') return CATEGORIES[cat].unites;
+    const b = Number(prefs.base) === 1024 ? 1024 : 1000;
+    const bin = b === 1024;
+    return {
+      bit: ['bit', 'b', 1 / 8], o: ['octet', 'o', 1],
+      ko: [bin ? 'Ko binaire' : 'kilooctet', bin ? 'Kio' : 'Ko', b], mo: [bin ? 'Mo binaire' : 'mégaoctet', bin ? 'Mio' : 'Mo', b ** 2],
+      go: [bin ? 'Go binaire' : 'gigaoctet', bin ? 'Gio' : 'Go', b ** 3], to: [bin ? 'To binaire' : 'téraoctet', bin ? 'Tio' : 'To', b ** 4]
+    };
+  }
+  function convertir(valeur, de, vers) {
+    if (prefs.cat === 'temperature') return DEPUIS_C[vers](VERS_C[de](valeur));
+    const u = unitesDe(prefs.cat);
+    return valeur * u[de][2] / u[vers][2];
+  }
+
+  // Lecture tolérante : virgule ou point, espaces ignorés, notation 1e6 acceptée
+  function lire(texte) {
+    const t = texte.replace(/\s/g, '').replace(',', '.');
+    if (t === '') return null;
+    return /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(t) ? parseFloat(t) : NaN;
+  }
+  function formater(n) {
+    if (!Number.isFinite(n)) return '';
+    const d = Number(prefs.decimales);
+    const abs = Math.abs(n);
+    let s = (abs !== 0 && (abs >= 1e15 || abs < Math.pow(10, -d) / 2)) ? n.toExponential(Math.max(d, 2)) : n.toFixed(d);
+    if (prefs.zeros) s = s.replace(/(\.\d*?)0+(e|$)/, '$1$2').replace(/\.(e|$)/, '$1');
+    if (/^-0(\.0*)?$/.test(s)) s = s.slice(1);
+    return s.replace('.', ',');
+  }
+
+  // --- Construction de l'interface ---
+  function construireCategories() {
+    Object.entries(CATEGORIES).forEach(([cle, c]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'categorie';
+      b.id = 'cat-' + cle;
+      b.dataset.cat = cle;
+      b.textContent = c.nom;
+      el.nav.append(b);
+    });
+  }
+  function remplirUnites() {
+    const unites = unitesDe(prefs.cat);
+    const choix = Array.isArray(prefs.unites[prefs.cat]) ? prefs.unites[prefs.cat] : CATEGORIES[prefs.cat].defaut;
+    [el.uA, el.uB].forEach((select, i) => {
+      select.replaceChildren();
+      Object.entries(unites).forEach(([cle, u]) => {
+        const opt = document.createElement('option');
+        opt.value = cle;
+        opt.textContent = u[0] + ' (' + u[1] + ')';
+        select.append(opt);
+      });
+      select.value = unites[choix[i]] ? choix[i] : Object.keys(unites)[i];
+    });
+  }
+  function afficherCategorie() {
+    el.nav.querySelectorAll('.categorie').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cat === prefs.cat)));
+    el.base.hidden = prefs.cat !== 'donnees';
+    remplirUnites();
+    calculer('a');
+  }
+
+  // --- Calcul dans les deux sens ---
+  function calculer(source) {
+    const [champ, cible, de, vers] = source === 'a' ? [el.a, el.b, el.uA.value, el.uB.value] : [el.b, el.a, el.uB.value, el.uA.value];
+    el.a.removeAttribute('aria-invalid');
+    el.b.removeAttribute('aria-invalid');
+    const v = lire(champ.value);
+    if (v === null) { cible.value = ''; el.resume.textContent = ''; el.erreur.textContent = ''; afficherTable(null); return; }
+    if (Number.isNaN(v)) {
+      champ.setAttribute('aria-invalid', 'true');
+      el.erreur.textContent = 'erreur : « ' + champ.value.slice(0, 30) + ' » n’est pas un nombre valide';
+      cible.value = '';
+      return;
+    }
+    el.erreur.textContent = '';
+    if (prefs.cat === 'temperature' && VERS_C[de](v) < -273.15 - 1e-9) el.erreur.textContent = 'attention : en dessous du zéro absolu (−273,15 °C)';
+    cible.value = formater(convertir(v, de, vers));
+    // Valeur côté A, sert de référence pour le résumé et la table
+    const valeurA = source === 'a' ? v : convertir(v, de, vers);
+    const u = unitesDe(prefs.cat);
+    // Le résumé reprend le nombre tel que saisi, et le résultat arrondi
+    const texteA = source === 'a' ? champ.value.trim() : cible.value;
+    const texteB = source === 'a' ? cible.value : champ.value.trim();
+    el.resume.textContent = texteA + ' ' + u[el.uA.value][1] + ' = ' + texteB + ' ' + u[el.uB.value][1];
+    afficherTable(valeurA);
+    prefs.valeur = texteA;
+    sauvegarder();
+  }
+  function afficherTable(valeurA) {
+    const u = unitesDe(prefs.cat);
+    el.table.replaceChildren();
+    Object.entries(u).forEach(([cle, unite]) => {
+      const tr = document.createElement('tr');
+      if (cle === el.uA.value || cle === el.uB.value) tr.className = 'actif';
+      const nom = document.createElement('td');
+      nom.textContent = unite[0] + ' (' + unite[1] + ')';
+      const val = document.createElement('td');
+      val.className = 'valeur';
+      val.textContent = valeurA === null ? '—' : formater(convertir(valeurA, el.uA.value, cle));
+      tr.append(nom, val);
+      el.table.append(tr);
+    });
+  }
+  function memoriserUnites() { prefs.unites[prefs.cat] = [el.uA.value, el.uB.value]; sauvegarder(); }
+
+  // --- Événements ---
+  let derniereSource = 'a';
+  el.nav.addEventListener('click', (e) => {
+    const b = e.target.closest('.categorie');
+    if (!b || b.dataset.cat === prefs.cat) return;
+    prefs.cat = b.dataset.cat;
+    derniereSource = 'a';
+    sauvegarder();
+    afficherCategorie();
+  });
+  el.a.addEventListener('input', () => { derniereSource = 'a'; calculer('a'); });
+  el.b.addEventListener('input', () => { derniereSource = 'b'; calculer('b'); });
+  [el.uA, el.uB].forEach((s) => s.addEventListener('change', () => { memoriserUnites(); calculer(derniereSource); }));
+  $('#btn-inverser').addEventListener('click', () => {
+    // On garde le nombre saisi à gauche et on inverse le sens de conversion
+    const ua = el.uA.value;
+    el.uA.value = el.uB.value;
+    el.uB.value = ua;
+    memoriserUnites();
+    derniereSource = 'a';
+    calculer('a');
+  });
+  el.dec.addEventListener('input', () => {
+    prefs.decimales = Number(el.dec.value);
+    el.decVal.textContent = String(prefs.decimales);
+    calculer(derniereSource);
+  });
+  el.zeros.addEventListener('change', () => { prefs.zeros = el.zeros.checked; calculer(derniereSource); });
+  document.querySelectorAll('input[name="base"]').forEach((r) => r.addEventListener('change', () => {
+    prefs.base = Number(r.value);
+    remplirUnites();
+    calculer(derniereSource);
+  }));
+
+  // --- Démarrage ---
+  construireCategories();
+  el.dec.value = String(prefs.decimales);
+  el.decVal.textContent = String(prefs.decimales);
+  el.zeros.checked = !!prefs.zeros;
+  $(Number(prefs.base) === 1024 ? '#base-1024' : '#base-1000').checked = true;
+  el.a.value = typeof prefs.valeur === 'string' ? prefs.valeur : '1';
+  afficherCategorie();
+})();
+</script>
+<script src="https://appmixtape.web.app/remix.js" data-app="CpYcUlFOxGSZ2a5s0GI7ETC33Kp2/bBaLcjt2WVmR1Pifh2Kj" defer></script>
+</body>
+</html>
